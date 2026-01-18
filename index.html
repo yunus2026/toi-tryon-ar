@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Browser AR Try-On</title>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils"></script>
+  <style>
+    body { text-align: center; font-family: sans-serif; }
+    canvas { transform: scaleX(-1); border-radius: 10px; width: 80%; max-width: 640px; }
+    video { display: none; } /* Hide the raw video feed */
+    .controls { margin-top: 20px; }
+  </style>
+</head>
+<body>
+ 
+  <h1>Virtual Try-On</h1>
+  <video class="input_video"></video>
+  <canvas class="output_canvas"></canvas>
+ 
+  <div class="controls">
+    <button onclick="changeItem('glasses.png')">Glasses</button>
+    <button onclick="changeItem('hat.png')">Hat</button>
+  </div>
+ 
+  <script>
+    const videoElement = document.getElementsByClassName('input_video')[0];
+    const canvasElement = document.getElementsByClassName('output_canvas')[0];
+    const canvasCtx = canvasElement.getContext('2d');
+ 
+    // Load your AR Item
+    let overlayImg = new Image();
+    overlayImg.src = 'https://i.imgur.com/your-transparent-glasses.png'; // Replace with your URL
+ 
+    function changeItem(src) {
+      overlayImg.src = src;
+    }
+ 
+    function onResults(results) {
+      // Set canvas size to match video
+      canvasElement.width = videoElement.videoWidth;
+      canvasElement.height = videoElement.videoHeight;
+ 
+      // Draw the webcam frame
+      canvasCtx.save();
+      canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+      canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+ 
+      if (results.multiFaceLandmarks) {
+        for (const landmarks of results.multiFaceLandmarks) {
+          // Landmark 33 (Left Eye) and 263 (Right Eye)
+          const leftEye = landmarks[33];
+          const rightEye = landmarks[263];
+ 
+          // Calculate position and scale
+          const x = leftEye.x * canvasElement.width;
+          const y = leftEye.y * canvasElement.height;
+          const width = (rightEye.x - leftEye.x) * canvasElement.width * 2.5;
+          const height = width * (overlayImg.height / overlayImg.width);
+ 
+          // Draw the image centered on eyes
+          canvasCtx.drawImage(overlayImg, x - (width*0.25), y - (height*0.5), width, height);
+        }
+      }
+      canvasCtx.restore();
+    }
+ 
+    const faceMesh = new FaceMesh({locateFile: (file) => {
+      return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
+    }});
+ 
+    faceMesh.setOptions({
+      maxNumFaces: 1,
+      refineLandmarks: true,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.5
+    });
+    faceMesh.onResults(onResults);
+ 
+    const camera = new Camera(videoElement, {
+      onFrame: async () => {
+        await faceMesh.send({image: videoElement});
+      },
+      width: 640,
+      height: 480
+    });
+    camera.start();
+  </script>
+</body>
+</html>
