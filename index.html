@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>AR Glasses Try-On</title>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar/dist/mindar-face.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.136.0/build/three.min.js"></script>
+</head>
+<body>
+  <div id="container"></div>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const mindarThree = new window.MINDAR.FACE.MindARThree({
+        container: document.querySelector("#container"),
+      });
+      const {renderer, scene, camera} = mindarThree;
+
+      // Load glasses model
+      const loader = new THREE.GLTFLoader();
+      loader.load("glasses.glb", (gltf) => {
+        const glasses = gltf.scene;
+        glasses.scale.set(0.01, 0.01, 0.01); // adjust size
+        scene.add(glasses);
+
+        // Attach to face anchor (nose bridge area)
+        const anchor = mindarThree.addAnchor(168); 
+        anchor.group.add(glasses);
+      });
+
+      mindarThree.start();
+      renderer.setAnimationLoop(() => {
+        renderer.render(scene, camera);
+      });
+    });
+  </script>
+</body>
+</html>
